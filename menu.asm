@@ -232,13 +232,13 @@ drawHelpScreen proc
         mov dh,helpYval
         call gotoxy
     loop drawHelpMessage
-    mov dl,30
+    mov dl,20
     mov dh,10
     call gotoxy
     mov eax,white+(black*16)
     call SetTextColor
     mWrite "PRESS W TO GO UP---PRESS S TO GO DOWN---PRESS A TO GO LEFT---PRESS D TO GO RIGHT."
-    mov dl,30
+    mov dl,20
     mov dh,11
     call gotoxy
     mWrite "WATCH OUT FOR THE GHOST'S :)"
