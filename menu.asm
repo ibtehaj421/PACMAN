@@ -20,7 +20,16 @@ include Macros.inc
     hash db "#",0
     space db " ",0
     cursor db 0 ;indicates that the game is meant to be started
-    nameBuffer db 10 dup(0),0
+    nameBuffer db 20 dup(0),0 ;storing the name in a string to be shown on the screen.
+
+    ;help screen 52 characters
+    help db "                    #    #   ######  #      #######",0
+         db "                    ######   #       #      ### ###",0
+         db "                    ######   ######  #      #######",0
+         db "                    #    #   #       #####  ##     ",0
+         db "                    #    #   ######  #####  ##     ",0
+    helpYval db 4
+    ;help screen
 .code
 main PROC
 ;reset registers
@@ -28,6 +37,7 @@ main PROC
     mov ebx,0
     mov edx,0
     mov eax,0
+    goBackToMenu::
     call drawmain
     mov eax,blue+(black*16)
     call SetTextColor
@@ -40,7 +50,7 @@ main PROC
     mov dl,40
     mov dh,17
     call gotoxy
-    mWrite "EXIT GAME"
+    mWrite "HELP MENU"
     ;cursor
     mov eax,'>'
     mov dl,36
@@ -94,10 +104,19 @@ main PROC
     jmp jumpmain
 
     OptionChosen:
+
+    cmp cursor,0
+    je timeTOSTART
+    cmp cursor,1
+    je gotothehelpscreen
+    timeTOSTART:
     call clrscr
     mov menuYval,4
     call drawmain
     call menuEnterName
+    gotothehelpscreen:
+        call clrscr
+        call drawHelpScreen
 Invoke ExitProcess,0
 main ENDP
 
@@ -170,7 +189,79 @@ menuEnterName proc
     mWrite "ENTER YOUR NAME: "
     mov edx,offset nameBuffer
     call readstring
-
+    call crlf
+    ;call writedec
 ret
 menuEnterName endp
+
+drawHelpScreen proc
+    
+    mov esi,offset help
+    mov ecx,5
+    mov ebx,52
+    mov dl,0
+    mov dh,helpYval
+    call gotoxy
+    drawhelpMessage:
+        drawHelpMessage2:
+            push ebx
+            mov ebx,[esi]
+            cmp bl,'#'
+            je drawHLetter
+            cmp bl,' '
+            je drawHSpace
+            drawHLetter:
+                call drawHash2
+                jmp drawHelpAgain
+            drawHSpace:
+                call drawSpace
+            drawHelpAgain:
+                inc esi
+                pop ebx
+                cmp ebx,0
+                je drawHelpScreen1
+                dec ebx
+            jmp drawHelpMessage2
+    drawHelpScreen1:
+        mov eax,150
+        call Delay
+        add esi,1
+        mov ebx,51
+        mov dl,0
+        inc helpYval
+        mov dh,helpYval
+        call gotoxy
+    loop drawHelpMessage
+    mov dl,30
+    mov dh,10
+    call gotoxy
+    mov eax,white+(black*16)
+    call SetTextColor
+    mWrite "PRESS W TO GO UP---PRESS S TO GO DOWN---PRESS A TO GO LEFT---PRESS D TO GO RIGHT."
+    mov dl,30
+    mov dh,11
+    call gotoxy
+    mWrite "WATCH OUT FOR THE GHOST'S :)"
+    mov dl,30
+    mov dh,12
+    call gotoxy
+    mWrite "PRESS B TO GO BACK."
+    helpScreenLoop:
+    mov eax,50
+    call Delay
+    call Readkey
+
+    cmp al,'b'
+    je timeToGoToTheMenu
+
+
+    jmp helpScreenLoop
+
+    timeToGoToTheMenu:
+    mov menuYval,4
+    mov helpYval,4
+    call clrscr
+    jmp goBackToMenu
+ret
+drawHelpScreen endp
 end main
