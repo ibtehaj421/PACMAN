@@ -1606,7 +1606,7 @@ pausemenu proc
         call gotoxy
         mov eax,white+(black*16)
         call SetTextColor
-        mWrite "PRESS W TO GO UP---PRESS S TO GO DOWN---PRESS A TO GO LEFT---PRESS D TO GO RIGHT."
+        mWrite "THE GHOSTS MAY DISPLACE YOUR COINS SO WATCH OUT FOR THAT."
         mov dl,20
         mov dh,11
         call gotoxy
