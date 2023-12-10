@@ -1,11 +1,26 @@
 
 include Irvine32.inc
 include Macros.inc
+includelib kernel32.lib
+includelib user32.lib
+includelib Winmm.lib
 .386
-;.model flat,stdcall
+
 .stack 4096
+        
+
+PlaySoundA PROTO,
+pszSound:PTR BYTE, 
+hmod:DWORD, 
+fdwSound:DWORD
+
 
 .data
+    var BYTE "music1.wav",0
+    menu8bit BYTE "menu8bit.wav",0
+    level2ost BYTE "level2.wav",0
+    level3ost BYTE "level3.wav",0
+    gameova BYTE "gameova.wav",0
     ;main menu
     ;main menu shapez
       
@@ -32,12 +47,18 @@ include Macros.inc
     ;help screen
 
     ;pause screen------------
-    pause1 db "        #######     #     ##    ##   ######  ######",0
-           db "        ### ###    ###    ##    ##   ###     #     ",0
-           db "        #######   #####   ########   ######  ######",0
-           db "        ##       #######  ########      ###  #     ",0
-           db "        ##      ######### ########   ######  ######",0
-    pauseYval db 4
+    pause1 db "#######     #     ##    ##   ######  ######",0
+           db "### ###    ###    ##    ##   ###     #     ",0
+           db "#######   #####   ########   ######  ######",0
+           db "##       #######  ########      ###  #     ",0
+           db "##      ######### ########   ######  ######",0
+    pauseYval db 12
+    clearpause db "                                           ",0
+               db "                                           ",0
+               db "                                           ",0
+               db "                                           ",0
+               db "                                           ",0
+    clearpauseYval db 12
     ;pause screen------------
 
     ;gameover-----------------------------------
@@ -114,6 +135,8 @@ include Macros.inc
     g1rval dd 11
     g1cval dd 30
     g1move dd 7
+    g1wallHit db 0
+    g1inBox db 1
 ;ghost
 
 ;coin restore
@@ -213,9 +236,20 @@ include Macros.inc
     wallHit3 db 0
     firstExit3 db 0
     ;ghost 3----
+
+    ;ghost4-----
+    ghost4X db 35
+    ghost4Y db 15
+    g4rval dd 11
+    g4cval dd 30
+    g4move db 7
+    inBox4 db 1
+    wallHit4 db 0
+    ;ghsot4-----
 .code
 main PROC
 ;reset registers
+    
     call Randomize
     mov ecx,0
     mov ebx,0
@@ -223,6 +257,7 @@ main PROC
     mov eax,0
     goBackToMenu::
     call drawmain
+    INVOKE PlaySoundA, OFFSET menu8bit,NULL,20001h
     mov eax,blue+(black*16)
     call SetTextColor
     mov dl,40
@@ -311,6 +346,7 @@ main PROC
         call drawHelpScreen
     startTheGame:
     call clrscr
+    call menuSelectLevel
     mov ecx,0
     mov ebx,0
     mov edx,0
@@ -325,23 +361,23 @@ main PROC
     mov eax,'P'
     call writechar
     call gotoxy
-    exitPauseLevel1::
+    
     mov esi,offset grid
     call gamesetup
     ;calling level 1 here
-    ;call level1
+    call level1
     ;calling level 1 here
     jumpToLevel2::
     mov pacmanY,18
     mov pacmanX,35
-    exitPauseLevel2::
+    
     call clrscr
     mov yvalue,4
     push offset grid2
     call drawGrid
     mov esi,offset grid2
     call gamesetup
-    ;call level2
+    call level2
     jumpToLevel3::
     ;callinglevel3
     mov pacmanY,18
@@ -352,10 +388,11 @@ main PROC
     call drawGrid
     mov esi,offset grid3
     call gamesetup
-    ;call level3
+    call level3
     ;callinglevel3
     call clrscr
     gameover::
+     INVOKE PlaySoundA, OFFSET gameova,NULL,20001h
     call clrscr
     call gameoverscreen
     shutDown::
@@ -437,6 +474,112 @@ menuEnterName proc
 ret
 menuEnterName endp
 
+menuSelectLevel proc
+    mov dl,40
+    mov dh,4
+    call gotoxy
+    mWrite "SELECT A LEVEL BELOW...."
+    mov dl,40 
+    mov dh,7
+    call gotoxy
+    mWrite " LEVEL 1"
+    mov dl,40 
+    mov dh,8
+    call gotoxy
+    mWrite " LEVEL 2"
+    mov dl,40 
+    mov dh,9
+    call gotoxy
+    mWrite " LEVEL 3"
+    mov eax,'>'
+    mov dl,36
+    mov dh,7
+    call gotoxy
+    call writechar
+    call gotoxy
+    jumpmain:
+        mov eax,50
+        call Delay
+        call ReadKey
+
+    cmp al,'w'
+    je l1
+    cmp al,'s'
+    je l2
+    cmp al,'e'
+    je shutDown
+    cmp al,'y'
+    je OptionChosen
+    jmp jumpmain
+    l1:
+        cmp cursor,3
+        je l2
+        mov eax,' '
+        mov dl,36
+        mov dh,8
+       
+
+        call gotoxy
+        call writechar
+        mov eax,white+(black*16)
+        call SetTextColor
+        mov cursor,0
+        mov levelNum,1
+        mov eax,'>'
+        mov dl,36
+        mov dh,7
+        call gotoxy
+        call writechar
+        call gotoxy
+        jmp jumpMain
+    l2:
+        cmp cursor,2
+        je l3
+        cmp cursor,3
+        jne remove2
+        mov eax,' '
+        mov dl,36
+        mov dh,9
+        jmp print
+        remove2:
+        mov eax,' '
+        mov dl,36
+        mov dh,7
+        print:
+        call gotoxy
+        call writechar
+        mov eax,white+(black*16)
+        call SetTextColor
+         mov levelNum,2
+        mov cursor,2
+        mov eax,'>'
+        mov dl,36
+        mov dh,8
+        call gotoxy
+        call writechar
+        call gotoxy
+        jmp jumpmain
+    l3:
+        mov eax,' '
+        mov dl,36
+        mov dh,8
+        call gotoxy
+        call writechar
+        mov eax,white+(black*16)
+        call SetTextColor
+        mov levelNum,3
+        mov cursor,3
+        mov eax,'>'
+        mov dl,36
+        mov dh,9
+        call gotoxy
+        call writechar
+        call gotoxy
+    jmp jumpmain
+
+    OptionChosen:
+ret
+menuSelectLevel endp
 drawHelpScreen proc
     
     mov esi,offset help
@@ -613,15 +756,79 @@ pacmanPos proc
 ret
 pacmanPos endp
 
-getRanGhost proc
+getRanGhost proc ;using this for ghost 1 since there no more register left to use for storage.
     enter 0,0
+    mov ebx,[ebp+16] ;wall hit
+    mov edx,[ebp+12] ;inbox
+    mov ecx,[ebp+8] ;move value
+
+    mov al,1
+    cmp [edx],al ;in box
+    jne goNext
+    cmp ghost1Y,11
+    jne goNext
+    mov al,0
+    mov [edx],al ;in box
+    goNext:
+    mov al,1
+    cmp [edx],al
+    jne startTracking
+    mov al,0
+    mov [ecx],al
+    jmp endFunc
+    startTracking:
+       cmp ghost1X,51
+        jne checkP1
+        cmp ghost1Y,5
+        jne checkP1
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP1:
+        cmp ghost1X,19
+        jne checkP2
+        cmp ghost1Y,5
+        jne checkP2
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP2:
+        cmp ghost1X,51
+        jne checkP3
+        cmp ghost1Y,16
+        jne checkP3
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP3:
+        cmp ghost1X,19
+        jne checkP4
+        cmp ghost1Y,16
+        jne checkP4
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP4:
+        cmp ghost1X,35
+        jne checkP5
+        cmp ghost1Y,14
+        jne checkP5
+        mov al,1
+        mov [ebx],al
+        checkP5:
+    track1:
+    mov al,0
+    cmp [ebx],al
+    je endFunc
     call Randomize
     mov eax,4
     call RandomRange
-    mov ecx,[ebp+8]
     mov [ecx],eax
+    mov al,0
+    mov [ebx],al
+    endFunc:
     leave
-ret 4
+ret 12
 getRanGhost endp
 
 moveGhost1 proc
@@ -654,7 +861,7 @@ moveGhost1 proc
          jne notRestoreCoinUP
          mov coinrestore,1
          mov ecx,g1rval
-         dec ecx
+         ;dec ecx
          add ecx,4
          mov edx,g1cval
          add edx,5
@@ -677,7 +884,7 @@ moveGhost1 proc
          mov eax,g1rval
          mul ebx
          add eax,g1cval
-         add eax,1
+         add eax,2
          mov ebx,[esi+eax]
          cmp bl,'#'
          je endMove
@@ -724,7 +931,7 @@ moveGhost1 proc
          jne notRestoreCoinDOWN
          mov coinrestore,1
          mov ecx,g1rval
-         inc ecx
+         ;inc ecx
          add ecx,4
          mov edx,g1cval
          add edx,5
@@ -748,7 +955,7 @@ moveGhost1 proc
          mov eax,g1rval
          mul ebx
          add eax,g1cval
-         sub eax,1
+         sub eax,2
          mov ebx,[esi+eax]
          cmp bl,'#'
          je endMove
@@ -783,13 +990,9 @@ moveGhost1 proc
         je checkg1move1
         jmp endg1
         checkg1move1:
-            cmp g1move,0
-            je resetg1move
-            cmp g1move,2
-            je resetg1move
+            mov g1wallHit,1
             jmp endg1
-       resetg1move:
-       mov g1move,7
+       
     endg1:
 ret 
 moveGhost1 endp
@@ -813,6 +1016,12 @@ ret 8
 checkIfGhost endp
 
 level1 proc
+    cmp levelNum,2
+    je jumpToLevel2
+    cmp levelNum,3
+    je jumpToLevel2
+    INVOKE PlaySoundA, OFFSET var,NULL,20001h
+    exitPauseLevel1::
     ;position ghost
     mov eax,magenta+(black*16)
     call SetTextColor
@@ -827,7 +1036,9 @@ level1 proc
     mov dh,pacmanY
     call gotoxy
     mov ebx,[esi+634]
+    mov esi,offset grid
     jump2:
+        
         cmp lives,0
         je gameover
         cmp score,320
@@ -862,6 +1073,8 @@ level1 proc
         jz moveUp
         cmp al,'s'
         jz moveDOWN
+        cmp al,'p'
+        je timetopause
         cmp al,'e'
         je shutDown
         jmp movetoend
@@ -937,7 +1150,7 @@ level1 proc
         cmp bl,'.'
         jne keepmoving2
         inc score
-         mov bl,' '
+        mov bl,' '
         mov [esi+eax],bl
         keepmoving2:
         dec rval
@@ -979,13 +1192,11 @@ level1 proc
         call gotoxy
         movetoend:
         ;check for ghost1
-        cmp g1move,0
-        je skipnewmove1
-        cmp g1move,2
-        je skipnewmove1
+        
+        push offset g1wallHit
+        push offset g1inBox
         push offset g1move
         call getRanGhost
-        skipnewmove1:
         call moveGhost1
         ;check for ghost1
         cmp coinrestore,1
@@ -1006,6 +1217,9 @@ level1 proc
         ;checking pacman and ghost collisions
     jmp jump2
 
+    timetopause:
+    call pausemenu
+    
 ret
 level1 endp
 
@@ -1096,6 +1310,19 @@ getTracking proc
         mov wallHit,1
         jmp track1
         checkP9: ;we will keep on adding more points.
+        cmp ghost2X,19
+        jne checkP10
+        cmp ghost2Y,16
+        jne checkP10
+         mov wallHit,1
+         jmp track1
+         checkP10:
+        cmp ghost2X,51
+        jne checkP11
+        cmp ghost2Y,16
+        jne checkP11
+         mov wallHit,1
+         checkP11:
     track1:
     cmp wallHit,0
     je endFunc
@@ -1243,7 +1470,7 @@ ghost2movement proc
          jne notRestoreCoinUP
          mov coinrestore,1
          mov ecx,g2rval
-         dec ecx
+         ;dec ecx
          add ecx,4
          mov edx,g2cval
          add edx,5
@@ -1313,7 +1540,7 @@ ghost2movement proc
          jne notRestoreCoinDOWN
          mov coinrestore,1
          mov ecx,g2rval
-         inc ecx
+         ;inc ecx
          add ecx,4
          mov edx,g2cval
          add edx,5
@@ -1381,10 +1608,13 @@ ret
 ghost2movement endp
 
 level2 proc
+    cmp levelNum,3
+    je jumpToLevel3
+     INVOKE PlaySoundA, OFFSET level2ost,NULL,20001h
  ;level 2 introduces a new ghost and a score increasing power up that will increase the current score.
  ;there is a score quota for each level that once passed make the player eligible to move onto the next level.
  ;position ghost
-    mov levelNum,2
+ exitPauseLevel2::
     mov eax,magenta+(black*16)
     call SetTextColor
     mov dl,ghost1X
@@ -1398,7 +1628,9 @@ level2 proc
     mov dh,pacmanY
     call gotoxy
     mov ebx,[esi+634]
+    mov esi,offset grid2
     jump2:
+        
         cmp lives,0
         je gameover
         cmp score,500
@@ -1452,6 +1684,8 @@ level2 proc
         cmp bl,'.'
         jne ScoreInc
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreInc:
         cmp bl,'O'
         jne keepmoving
@@ -1485,6 +1719,8 @@ level2 proc
         cmp bl,'.'
         jne ScoreUp1
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp1:
         cmp bl,'O'
         jne keepmoving1
@@ -1518,6 +1754,8 @@ level2 proc
         cmp bl,'.'
         jne ScoreUp2
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp2:
         cmp bl,'O'
         jne keepmoving2
@@ -1549,6 +1787,8 @@ level2 proc
         cmp bl,'.'
        jne ScoreUp3
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp3:
         cmp bl,'O'
         jne keepmoving3
@@ -1568,13 +1808,10 @@ level2 proc
         call gotoxy
         movetoend:
         ;check for ghost1
-        cmp g1move,0
-        je skipnewmove1
-        cmp g1move,2
-        je skipnewmove1
+        push offset g1wallHit
+        push offset g1inBox
         push offset g1move
         call getRanGhost
-        skipnewmove1:
         call moveGhost1
         ;check for ghost1
         cmp coinrestore,1
@@ -1615,7 +1852,7 @@ level2 proc
         ;checking pacman and ghost collisions
     jmp jump2
     timetopause:
-    call clrscr
+    
     call pausemenu
 ret
 level2 endp
@@ -1650,14 +1887,31 @@ gamesetup proc
     call gotoxy
     mov edx,offset nameBuffer
     call writestring
+    cmp lives,0
+    je endFunc
+        mov dl,75
+        mov dh,20
+        call gotoxy
+        mov eax,white+(black*16)
+        call SetTextColor
+        mWrite "THE GHOSTS MAY DISPLACE YOUR COINS."
+        mov dl,75
+        mov dh,21
+        call gotoxy
+        mWrite "THEY ARE NOT LOST SO BE ON THE LOOKOUT."
+        mov dl,75
+        mov dh,22
+        call gotoxy
+        mWrite "WATCH OUT FOR THE GHOSTS x-x"
+    endFunc:
 ret
 gamesetup endp
 
 pausemenu proc
     mov esi,offset pause1
     mov ecx,5
-    mov ebx,52
-    mov dl,0
+    mov ebx,42
+    mov dl,75
     mov dh,pauseYval
     call gotoxy
     drawPauseMessage:
@@ -1684,26 +1938,17 @@ pausemenu proc
         mov eax,150
         call Delay
         add esi,1
-        mov ebx,51
-        mov dl,0
+        mov ebx,42
+        mov dl,75
         inc pauseYval
         mov dh,pauseYval
         call gotoxy
     loop drawPauseMessage
-        mov dl,20
-        mov dh,10
-        call gotoxy
-        mov eax,white+(black*16)
-        call SetTextColor
-        mWrite "THE GHOSTS MAY DISPLACE YOUR COINS. THEY ARE NOT LOST SO BE ON THE LOOKOUT."
-        mov dl,20
-        mov dh,11
-        call gotoxy
-        mWrite "WATCH OUT FOR THE GHOSTS x-x"
-        mov dl,30
-        mov dh,12
-        call gotoxy
-        mWrite "PRESS B TO GO BACK."
+        
+        ;mov dl,30
+        ;mov dh,12
+        ;call gotoxy
+        ;mWrite "PRESS B TO GO BACK."
         helpScreenLoop:
         mov eax,50
         call Delay
@@ -1715,17 +1960,56 @@ pausemenu proc
 
         jmp helpScreenLoop
     timeToGoToTheGame:
-    mov pauseYval,4
-    call clrscr
+    mov esi,offset clearpause
+    mov ecx,5
+    mov ebx,42
+    mov dl,75
+    mov dh,clearpauseYval
+    call gotoxy
+    drawClearMessage:
+        drawClearMessage2:
+            push ebx
+            mov ebx,[esi]
+            cmp bl,'#'
+            je drawCLetter
+            cmp bl,' '
+            je drawCSpace
+            drawCLetter:
+                call drawHash2
+                jmp drawClearAgain
+            drawCSpace:
+                call drawSpace
+            drawClearAgain:
+                inc esi
+                pop ebx
+                cmp ebx,0
+                je drawClearScreen1
+                dec ebx
+            jmp drawClearMessage2
+    drawClearScreen1:
+        mov eax,150
+        call Delay
+        add esi,1
+        mov ebx,42
+        mov dl,75
+        inc clearpauseYval
+        mov dh,clearpauseYval
+        call gotoxy
+    loop drawClearMessage
+    mov pauseYval,12
+    mov clearpauseYval,12
     cmp levelNum,1
     je exitPauseLevel1
     cmp levelNum,2
     je  exitPauseLevel2
-   
+    cmp levelNum,3
+    je exitPauseLevel3
 ret
 pausemenu endp
 
 level3 proc
+    INVOKE PlaySoundA, OFFSET level3ost,NULL,20001h
+    exitPauseLevel3::
     mov levelNum,3
     mov eax,magenta+(black*16)
     call SetTextColor
@@ -1740,6 +2024,7 @@ level3 proc
     mov dh,pacmanY
     call gotoxy
     mov ebx,[esi+634]
+    mov esi,offset grid3
     jump2:
         cmp lives,0
         je gameover
@@ -1798,6 +2083,8 @@ level3 proc
         cmp bl,'.'
         jne ScoreInc
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreInc:
         cmp bl,'O'
         jne keepmoving
@@ -1835,6 +2122,8 @@ level3 proc
         cmp bl,'.'
         jne ScoreUp1
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp1:
         cmp bl,'O'
         jne keepmoving1
@@ -1868,6 +2157,8 @@ level3 proc
         cmp bl,'.'
         jne ScoreUp2
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp2:
         cmp bl,'O'
         jne keepmoving2
@@ -1899,6 +2190,8 @@ level3 proc
         cmp bl,'.'
        jne ScoreUp3
         inc score
+        mov bl,' '
+        mov [esi+eax],bl
         ScoreUp3:
         cmp bl,'O'
         jne keepmoving3
@@ -1918,15 +2211,29 @@ level3 proc
         call gotoxy
         movetoend:
         ;check for ghost1
-        cmp g1move,0
-        je skipnewmove1
-        cmp g1move,2
-        je skipnewmove1
+        push offset g1wallHit
+        push offset g1inBox
         push offset g1move
         call getRanGhost
-        skipnewmove1:
         call moveGhost1
         ;check for ghost1
+        cmp coinrestore,1
+        jne ghost4
+        mov eax,white+(black*16)
+        call SetTextColor
+        mov eax,'.'
+        mov dl,rcoinY
+        mov dh,rcoinX
+        call gotoxy
+        mov coinrestore,0
+        call writechar
+        ;random ghost number 2
+        ghost4:
+        push offset wallHit4
+        push offset inBox4
+        push offset g4move
+        call getRanGhost1
+        call moveGhost4
         cmp coinrestore,1
         jne ghost2
         mov eax,white+(black*16)
@@ -1982,7 +2289,6 @@ level3 proc
         ;checking pacman and ghost collisions
     jmp jump2
     timetopause:
-    call clrscr
     call pausemenu
     
     teleporterFound:
@@ -2136,6 +2442,19 @@ getTracking3 proc
         mov wallHit3,1
         jmp track1
         checkP9: ;we will keep on adding more points.
+        cmp ghost3X,19
+        jne checkP10
+        cmp ghost3Y,16
+        jne checkP10
+         mov wallHit3,1
+         jmp track1
+         checkP10:
+        cmp ghost3X,51
+        jne checkP11
+        cmp ghost3Y,16
+        jne checkP11
+         mov wallHit3,1
+         checkP11:
     track1:
     cmp wallHit3,0
     je endFunc
@@ -2282,7 +2601,7 @@ ghost3movement proc
          jne notRestoreCoinUP
          mov coinrestore,1
          mov ecx,g3rval
-         dec ecx
+         ;dec ecx
          add ecx,4
          mov edx,g3cval
          add edx,5
@@ -2352,7 +2671,7 @@ ghost3movement proc
          jne notRestoreCoinDOWN
          mov coinrestore,1
          mov ecx,g3rval
-         inc ecx
+         ;inc ecx
          add ecx,4
          mov edx,g3cval
          add edx,5
@@ -2513,4 +2832,245 @@ gameoverscreen proc
 
 ret
 gameoverscreen endp
+
+moveGhost4 proc
+    mov eax,white+(black*16)
+    call SetTextColor
+    mov eax,20
+    call Delay
+    mov dl,ghost4X
+    mov dh,ghost4Y
+    call gotoxy
+    
+    cmp g4move,0
+    je g1UP
+    cmp g4move,1
+    je g1Right
+    cmp g4move,2
+    je g1Down
+    cmp g4move,3
+    je g1Left
+    g1UP:
+         mov ebx,62
+         mov eax,g4rval
+         dec eax
+         mul ebx
+         add eax,g4cval
+         mov ebx,[esi+eax]
+         cmp bl,'#'
+         je endMove
+         cmp bl,'.'
+         jne notRestoreCoinUP
+         mov coinrestore,1
+         mov ecx,g4rval
+         ;dec ecx
+         add ecx,4
+         mov edx,g4cval
+         add edx,5
+         mov rcoinX,cl
+         mov rcoinY,dl
+         mov coinrestore,1
+         notRestoreCoinUP:
+         dec g4rval
+          mov eax,' '
+          call writechar
+          dec ghost4Y
+          mov dl,ghost4X
+          mov dh,ghost4Y
+          call gotoxy
+          mov eax,'G'
+          call writechar
+    jmp endMove
+    g1Right:
+         mov ebx,62
+         mov eax,g4rval
+         mul ebx
+         add eax,g4cval
+         add eax,2
+         mov ebx,[esi+eax]
+         cmp bl,'#'
+         je endMove
+         mov ebx,62
+         mov eax,g4rval
+         mul ebx
+         add eax,g4cval
+         add eax,1
+         mov ebx,[esi+eax]
+         cmp bl,'.'
+         jne notRestoreCoinRight
+         mov coinrestore,1
+         mov ecx,g4rval
+         add ecx,4
+         mov edx,g4cval
+         add edx,5
+         mov rcoinX,cl
+         mov rcoinY,dl
+         mov coinrestore,1
+
+         notRestoreCoinRight:
+         inc g4cval
+          mov eax,' '
+          call writechar
+          inc ghost4X
+          mov dl,ghost4X
+          mov dh,ghost4Y
+          call gotoxy
+          mov eax,'G'
+          call writechar
+          
+             
+    jmp endMove
+    g1Down:
+         mov ebx,62
+         mov eax,g4rval
+         inc eax
+         mul ebx
+         add eax,g4cval
+         mov ebx,[esi+eax]
+         cmp bl,'#'
+         je endMove
+         cmp bl,'.'
+         jne notRestoreCoinDOWN
+         mov coinrestore,1
+         mov ecx,g4rval
+         ;inc ecx
+         add ecx,4
+         mov edx,g4cval
+         add edx,5
+         mov rcoinX,cl
+         mov rcoinY,dl
+         mov coinrestore,1
+         notRestoreCoinDOWN:
+
+         inc g4rval
+         mov eax,' '
+          call writechar
+          inc ghost4Y
+          mov dl,ghost4X
+          mov dh,ghost4Y
+          call gotoxy
+          mov eax,'G'
+          call writechar
+    jmp endMove
+    g1Left:
+         mov ebx,62
+         mov eax,g4rval
+         mul ebx
+         add eax,g4cval
+         sub eax,2
+         mov ebx,[esi+eax]
+         cmp bl,'#'
+         je endMove
+         mov ebx,62
+         mov eax,g4rval
+         mul ebx
+         add eax,g4cval
+         add eax,1
+         mov ebx,[esi+eax]
+         cmp bl,'.'
+         jne notRestoreCoinLeft
+         mov coinrestore,1
+         mov ecx,g4rval
+         add ecx,4
+         mov edx,g4cval
+         add edx,5
+         mov rcoinX,cl
+         mov rcoinY,dl
+         mov coinrestore,1
+         notRestoreCoinLeft:
+         dec g4cval
+          mov eax,' '
+          call writechar
+          dec ghost4X
+          mov dl,ghost4X
+          mov dh,ghost4Y
+          call gotoxy
+          mov eax,'G'
+          call writechar
+    endMove:
+        cmp bl,'#'
+        je checkg1move1
+        jmp endg1
+        checkg1move1:
+            mov wallHit4,1
+            jmp endg1
+       
+    endg1:
+ret 
+moveGhost4 endp
+
+getRanGhost1 proc ;using this for ghost 1 since there no more register left to use for storage.
+    enter 0,0
+    mov ebx,[ebp+16] ;wall hit
+    mov edx,[ebp+12] ;inbox
+    mov ecx,[ebp+8] ;move value
+
+    mov al,1
+    cmp [edx],al ;in box
+    jne goNext
+    cmp ghost4Y,11
+    jne goNext
+    mov al,0
+    mov [edx],al ;in box
+    goNext:
+    mov al,1
+    cmp [edx],al
+    jne startTracking
+    mov al,0
+    mov [ecx],al
+    jmp endFunc
+    startTracking:
+       cmp ghost4X,51
+        jne checkP1
+        cmp ghost4Y,5
+        jne checkP1
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP1:
+        cmp ghost4X,19
+        jne checkP2
+        cmp ghost4Y,5
+        jne checkP2
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP2:
+        cmp ghost4X,51
+        jne checkP3
+        cmp ghost4Y,16
+        jne checkP3
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP3:
+        cmp ghost4X,19
+        jne checkP4
+        cmp ghost4Y,16
+        jne checkP4
+        mov al,1
+        mov [ebx],al
+        jmp track1
+        checkP4:
+        cmp ghost4X,35
+        jne checkP5
+        cmp ghost4Y,14
+        jne checkP5
+        mov al,1
+        mov [ebx],al
+        checkP5:
+    track1:
+    mov al,0
+    cmp [ebx],al
+    je endFunc
+    call Randomize
+    mov eax,4
+    call RandomRange
+    mov [ecx],eax
+    mov al,0
+    mov [ebx],al
+    endFunc:
+    leave
+ret 12
+getRanGhost1 endp
 end main
