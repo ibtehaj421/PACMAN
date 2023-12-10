@@ -39,6 +39,22 @@ include Macros.inc
            db "        ##      ######### ########   ######  ######",0
     pauseYval db 4
     ;pause screen------------
+
+    ;gameover-----------------------------------
+    game   db "         ######     #        #        #    ######  ",0
+           db "         ##        ###      ###      ###   #       ",0
+           db "         ##   #   #####    ##############  ######  ",0
+           db "         ######  #######  ################ #       ",0
+           db "         ###### ######### ################ ######  ",0
+    gameYval db 4
+    over1  db "         ###### #       #  ######  #######         ",0
+           db "         ###### ##     ##  #       ### ###         ",0
+           db "         ### ## ###   ###  ######  ## #            ",0
+           db "         ###### #### ####  #       ##  #           ",0
+           db "         ###### #########  ######  ##   #          ",0
+    overYval db 10
+    ;gameover-----------------------------------
+
     ;grid set up---------------------------------------------------------------------level 1
     rval dd 14
     cval dd 30
@@ -86,9 +102,9 @@ include Macros.inc
 ;score
     score dd 0
     scorex db 90
-    scorey db 3
+    scorey db 6
     scorewx db 80
-    scorewy db 3
+    scorewy db 6
 ;score
 
 ;ghost
@@ -109,9 +125,9 @@ include Macros.inc
 ;lives
     lives dd 3
     livesx db 90
-    livesy db 4
+    livesy db 7
     liveswx db 80
-    liveswy db 4
+    liveswy db 7
 ;lives
 
 ;level 2 starts here first comes the grid for level 2 with power ups.
@@ -336,8 +352,12 @@ main PROC
     call drawGrid
     mov esi,offset grid3
     call gamesetup
-    call level3
+    ;call level3
     ;callinglevel3
+    call clrscr
+    gameover::
+    call clrscr
+    call gameoverscreen
     shutDown::
 Invoke ExitProcess,0
 main ENDP
@@ -808,6 +828,8 @@ level1 proc
     call gotoxy
     mov ebx,[esi+634]
     jump2:
+        cmp lives,0
+        je gameover
         cmp score,320
         je jumpToLevel2
         mov eax,yellow+(black*16)
@@ -1377,6 +1399,8 @@ level2 proc
     call gotoxy
     mov ebx,[esi+634]
     jump2:
+        cmp lives,0
+        je gameover
         cmp score,500
         je jumpToLevel3
         mov eax,yellow+(black*16)
@@ -1618,11 +1642,11 @@ gamesetup proc
     mov eax,lives
     call writedec
     mov dl,80
-    mov dh,5
+    mov dh,8
     call gotoxy
     mWrite "PLAYER: "
     mov dl,90
-    mov dh,5
+    mov dh,8
     call gotoxy
     mov edx,offset nameBuffer
     call writestring
@@ -1717,7 +1741,9 @@ level3 proc
     call gotoxy
     mov ebx,[esi+634]
     jump2:
-        cmp score,500
+        cmp lives,0
+        je gameover
+        cmp score,700
         je jumpToLevel3
         mov eax,yellow+(black*16)
         call SetTextColor
@@ -2392,4 +2418,99 @@ ghost3movement proc
     endg1:
 ret
 ghost3movement endp
+
+gameoverscreen proc
+    mov ecx,5
+    mov ebx,51
+    mov dl,0
+    mov dh,gameYval
+    mov esi,offset game
+    call gotoxy
+    drawGameMessage:
+        drawGameMessage2:
+            push ebx
+            mov ebx,[esi]
+            cmp bl,'#'
+            je drawPLetter
+            cmp bl,' '
+            je drawPSpace
+            drawPLetter:
+                call drawHash2
+                jmp drawGameAgain
+            drawPSpace:
+                call drawSpace
+            drawGameAgain:
+                inc esi
+                pop ebx
+                cmp ebx,0
+                je drawGameScreen1
+                dec ebx
+            jmp drawGameMessage2
+    drawGameScreen1:
+        mov eax,150
+        call Delay
+        add esi,1
+        mov ebx,50
+        mov dl,0
+        inc gameYval
+        mov dh,gameYval
+        call gotoxy
+    loop drawGameMessage
+    
+    mov esi,offset over1
+    mov ecx,5
+    mov ebx,51
+    mov dl,0
+    mov dh,overYval
+    call gotoxy
+    drawOverMessage:
+        drawOverMessage2:
+            push ebx
+            mov ebx,[esi]
+            cmp bl,'#'
+            je drawOLetter
+            cmp bl,' '
+            je drawOSpace
+            drawOLetter:
+                call drawHash2
+                jmp drawOverAgain
+            drawOSpace:
+                call drawSpace
+            drawOverAgain:
+                inc esi
+                pop ebx
+                cmp ebx,0
+                je drawOverScreen1
+                dec ebx
+            jmp drawOverMessage2
+    drawOverScreen1:
+        mov eax,150
+        call Delay
+        add esi,1
+        mov ebx,50
+        mov dl,0
+        inc overYval
+        mov dh,overYval
+        call gotoxy
+    loop drawOverMessage
+    
+    call gamesetup
+    mov eax,white+(black*16)
+    call SetTextColor
+    mov dl,45
+    mov dh,17
+    call gotoxy
+    mWrite "PRESS E TO EXIT - >"
+        gameoverloop:
+        mov eax,50
+        call Delay
+        call Readkey
+
+        cmp al,'e'
+        je ShutDown
+    jmp gameoverloop
+
+
+ret
+gameoverscreen endp
 end main
